@@ -16,20 +16,19 @@ pipeline {
         }
         stage('Build & Push') {
             steps {
-                withAWS(credentials: 'aws-lab', region: "${params.AWS_REGION}") {
-                    sh '''
-                    # Login a ECR
-                    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.$AWS_REGION.amazonaws.com
+                script {
+                // Variables
+                def ecrRepo = "${params.ACCOUNT_ID}.dkr.ecr.${params.AWS_REGION}.amazonaws.com/${params.ECR_REPO}:latest"
 
-                    # Construir imagen Docker
-                    docker build -t ${ECR_REPO}:latest .
+                // Login en ECR
+                sh "aws ecr get-login-password --region ${params.AWS_REGION} | docker login --username AWS --password-stdin ${params.ACCOUNT_ID}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
 
-                    # Etiquetar imagen para ECR
-                    docker tag ${ECR_REPO}:latest ${ACCOUNT_ID}.dkr.ecr.$AWS_REGION.amazonaws.com/${ECR_REPO}:latest
+                // Construir imagen
+                sh "docker build -t ${params.ECR_REPO}:latest ."
 
-                    # Subir imagen a ECR
-                    docker push ${ACCOUNT_ID}.dkr.ecr.$AWS_REGION.amazonaws.com/${ECR_REPO}:latest
-                    '''
+                // Tag y push a ECR
+                sh "docker tag ${params.ECR_REPO}:latest ${ecrRepo}"
+                sh "docker push ${ecrRepo}"
                 }
             }
         }
